@@ -1,0 +1,11 @@
+services:
+  web:
+    build: .
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - db-data:/data
+
+volumes:
+  db-data:

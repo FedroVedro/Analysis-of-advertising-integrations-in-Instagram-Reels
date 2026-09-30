@@ -1,0 +1,56 @@
+from collections.abc import Iterator
+from pathlib import Path
+
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+from app.config import get_settings
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def _create_engine(database_url: str) -> Engine:
+    url = make_url(database_url)
+    if url.get_backend_name() != "sqlite":
+        return create_engine(database_url, pool_pre_ping=True)
+
+    if url.database and url.database != ":memory:":
+        Path(url.database).parent.mkdir(parents=True, exist_ok=True)
+
+    engine = create_engine(
+        database_url,
+        # Сессии открываются в потоках FastAPI и в воркере
+        connect_args={"check_same_thread": False, "timeout": 5},
+    )
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_conn, _record) -> None:
+        cursor = dbapi_conn.cursor()
+        # WAL: web читает, пока воркер пишет, без блокировок
+        cursor.execute("PRAGMA journal_mode=WAL")
+        # При конкурентной записи ждём до 5 с вместо ошибки "database is locked"
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
+
+    return engine
+
+
+engine = _create_engine(get_settings().database_url)
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+
+
+def init_db() -> None:
+    from app import models  # noqa: F401  регистрирует таблицы в Base.metadata
+
+    Base.metadata.create_all(engine)
+
+
+def get_session() -> Iterator[Session]:
+    """Зависимость FastAPI: одна сессия на запрос."""
+    with SessionLocal() as session:
+        yield session
