@@ -3,6 +3,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import get_settings
@@ -47,7 +48,15 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 def init_db() -> None:
     from app import models  # noqa: F401  регистрирует таблицы в Base.metadata
 
-    Base.metadata.create_all(engine)
+    # web и воркер стартуют одновременно: create_all одного может проверить таблицы
+    # до того, как второй их создаст, и упасть с "table already exists" — тогда повторяем
+    for attempt in range(3):
+        try:
+            Base.metadata.create_all(engine)
+            return
+        except OperationalError as exc:
+            if "already exists" not in str(exc) or attempt == 2:
+                raise
 
 
 def get_session() -> Iterator[Session]:
