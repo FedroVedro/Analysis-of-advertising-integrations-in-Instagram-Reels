@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     database_url: str = f"sqlite:///{(BASE_DIR / 'data' / 'app.db').as_posix()}"
 
+    apify_token: str | None = None
+
     max_urls_per_request: int = 20
 
 
