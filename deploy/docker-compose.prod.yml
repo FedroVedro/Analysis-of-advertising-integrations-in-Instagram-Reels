@@ -1,0 +1,39 @@
+# Продакшен на VPS: сайт + воркер (общий volume с SQLite) + Caddy (HTTPS от Let's Encrypt).
+#   docker compose -f deploy/docker-compose.prod.yml up -d --build
+services:
+  web:
+    build: ..
+    env_file: ../.env
+    # --proxy-headers: реальный IP клиента из X-Forwarded-For (лимит запросов по IP)
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000",
+              "--proxy-headers", "--forwarded-allow-ips", "*"]
+    volumes:
+      - db-data:/data
+    restart: unless-stopped
+
+  worker:
+    build: ..
+    env_file: ../.env
+    command: ["python", "-m", "app.worker"]
+    volumes:
+      - db-data:/data
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

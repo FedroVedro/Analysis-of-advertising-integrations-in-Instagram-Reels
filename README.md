@@ -3,8 +3,8 @@
 Веб-сервис: принимает до 20 ссылок на Instagram Reels, в фоне собирает метрики и определяет,
 есть ли в ролике реклама Skycoach, насколько она заметна и есть ли замечания к размещению баннера.
 
-**Развёрнутый сервис:** _ссылка появится после деплоя_
-**Демо всех состояний без бэкенда:** `/?mock=1`
+**Развёрнутый сервис:** https://bmopenclaw.ru
+**Демо всех состояний без бэкенда:** https://bmopenclaw.ru/?mock=1
 
 ## Что выдаёт по каждому ролику
 
@@ -51,6 +51,19 @@ python eval/evaluate.py            # оценка точности на разм
 ```bash
 docker compose up --build
 ```
+
+## Деплой
+
+Прод — VPS (Ubuntu 24.04) с Docker: сайт, воркер и Caddy, который сам получает и продлевает
+HTTPS-сертификат Let's Encrypt (`deploy/docker-compose.prod.yml`, `deploy/Caddyfile`).
+
+```bash
+# на сервере, в папке проекта с заполненным .env
+docker compose -f deploy/docker-compose.prod.yml up -d --build
+```
+
+База SQLite лежит в Docker-volume и переживает перезапуски и пересборки. Для платформ вроде
+Railway есть `railway.json` + `start.sh` (сайт и воркер в одном контейнере).
 
 ## Архитектура
 

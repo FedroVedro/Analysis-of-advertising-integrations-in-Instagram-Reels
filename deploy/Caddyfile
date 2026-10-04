@@ -1,0 +1,9 @@
+# Caddy сам получает и продлевает сертификат Let's Encrypt для домена
+bmopenclaw.ru {
+	encode gzip
+	reverse_proxy web:8000
+}
+
+www.bmopenclaw.ru {
+	redir https://bmopenclaw.ru{uri} permanent
+}
