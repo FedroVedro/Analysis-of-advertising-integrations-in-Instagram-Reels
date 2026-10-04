@@ -9,12 +9,15 @@
 import logging
 import signal
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, update
 
+from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.models import Reel, ReelStatus
+from app.pipeline.analyze import analyze_reel
 from app.scraper.apify_reels import (
     MAX_BATCH_SIZE,
     ApifyReelsScraper,
@@ -94,19 +97,35 @@ def process_batch(scraper: ApifyReelsScraper) -> int:
         return len(reels)
 
     by_shortcode = {r.shortcode: r for r in results}
+    to_analyze = []
     for reel in reels:
         result = by_shortcode.get(reel.shortcode)
         try:
             if result is None:
                 raise RuntimeError("Apify не вернул результат для ролика")
             _save_fetch_result(reel.id, result)
-            if result.status == ScrapeStatus.OK:
-                _analyze(reel.id)
+            if result.status == ScrapeStatus.OK and not result.video_url:
+                # Ссылка /p/ на фото или карусель: метрики есть, анализировать нечего — повтор не поможет
+                _mark_unavailable(reel.id, "Публикация не содержит видео (фото или карусель)")
+            elif result.status == ScrapeStatus.OK:
+                to_analyze.append(reel)
         except Exception as exc:
-            # Ошибка одного ролика не должна валить воркер и остальные ролики
-            logger.exception("Ошибка обработки %s", reel.shortcode)
+            logger.exception("Ошибка сохранения %s", reel.shortcode)
             _fail_or_retry(reel.id, f"Внутренняя ошибка: {exc}")
+
+    # Анализ долгий (скачивание, транскрипция, vision) — несколько роликов параллельно
+    with ThreadPoolExecutor(max_workers=get_settings().analysis_concurrency) as pool:
+        list(pool.map(_analyze_safely, to_analyze))
     return len(reels)
+
+
+def _analyze_safely(reel: Reel) -> None:
+    try:
+        _analyze(reel.id)
+    except Exception as exc:
+        # Ошибка одного ролика не должна валить воркер и остальные ролики
+        logger.exception("Ошибка анализа %s", reel.shortcode)
+        _fail_or_retry(reel.id, f"Анализ не выполнен: {exc}")
 
 
 def _save_fetch_result(reel_id: str, result: ReelResult) -> None:
@@ -131,6 +150,7 @@ def _save_fetch_result(reel_id: str, result: ReelResult) -> None:
         reel.duration_sec = result.duration_sec
         reel.caption = result.caption
         reel.video_url = result.video_url
+        reel.audio_url = result.audio_url
         reel.error = None
         reel.status = ReelStatus.ANALYZING
         reel.locked_at = utcnow()
@@ -138,13 +158,42 @@ def _save_fetch_result(reel_id: str, result: ReelResult) -> None:
         logger.info("%s: метрики получены (views=%s)", reel.shortcode, reel.views)
 
 
-def _analyze(reel_id: str) -> None:
-    """Этапы 4–6: транскрипция, анализ кадров, классификация. Пока заглушка — только метрики."""
+def _mark_unavailable(reel_id: str, error: str) -> None:
     with SessionLocal() as session:
         reel = session.get(Reel, reel_id)
+        reel.status, reel.error, reel.locked_at = ReelStatus.UNAVAILABLE, error, None
+        session.commit()
+        logger.info("%s: недоступен (%s)", reel.shortcode, error)
+
+
+def _analyze(reel_id: str) -> None:
+    """Этапы 4–6: транскрипция, анализ кадров, класс, заметность, обоснование."""
+    with SessionLocal() as session:
+        reel = session.get(Reel, reel_id)
+        params = dict(
+            shortcode=reel.shortcode, video_url=reel.video_url, audio_url=reel.audio_url,
+            caption=reel.caption, duration_hint=reel.duration_sec,
+        )
+    started = time.monotonic()
+    result = analyze_reel(**params)  # долгие внешние вызовы — вне сессии БД
+
+    with SessionLocal() as session:
+        reel = session.get(Reel, reel_id)
+        reel.duration_sec = result.duration_sec or reel.duration_sec
+        reel.has_audio = result.has_audio
+        reel.transcript = result.transcript
+        reel.integration_class = result.integration_class
+        reel.visibility_score = result.visibility_score
+        reel.justification = result.justification
+        reel.analysis = result.analysis
         reel.status = ReelStatus.DONE
+        reel.error = None
         reel.locked_at = None
         session.commit()
+    logger.info(
+        "%s: анализ готов за %.0f с — класс %s, заметность %s",
+        params["shortcode"], time.monotonic() - started, result.integration_class, result.visibility_score,
+    )
 
 
 def _fail_or_retry(reel_id: str, error: str) -> None:

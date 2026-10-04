@@ -62,6 +62,7 @@ class Reel(Base):
     duration_sec: Mapped[float | None]
     caption: Mapped[str | None] = mapped_column(Text)
     video_url: Mapped[str | None] = mapped_column(Text)
+    audio_url: Mapped[str | None] = mapped_column(Text)
 
     # Анализ
     has_audio: Mapped[bool | None]

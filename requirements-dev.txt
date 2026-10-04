@@ -1,2 +1,4 @@
 -r requirements.txt
 pytest>=8
+# ffmpeg для локального запуска без установки в систему (в Docker — системный ffmpeg)
+imageio-ffmpeg>=0.5

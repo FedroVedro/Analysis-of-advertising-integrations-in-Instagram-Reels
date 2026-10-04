@@ -69,6 +69,7 @@ class ReelResult:
     caption: str | None = None
     duration_sec: float | None = None
     video_url: str | None = None  # ссылка на CDN Instagram, живёт несколько часов
+    audio_url: str | None = None  # отдельная звуковая дорожка, если видео отдано без звука
     hashtags: list[str] = field(default_factory=list)
     mentions: list[str] = field(default_factory=list)
 
@@ -202,17 +203,22 @@ class ApifyReelsScraper:
         result.caption = item.get("caption")
         result.duration_sec = item.get("videoDuration")
         result.video_url = item.get("videoUrl")
+        result.audio_url = item.get("audioUrl")
         result.hashtags = item.get("hashtags") or []
         result.mentions = item.get("mentions") or []
 
 
-def download_video(video_url: str, dest: Path, timeout: float = 60.0) -> Path:
-    """Скачивает видео по videoUrl. Делать сразу после скрапинга: ссылки CDN быстро истекают."""
+def download_video(video_url: str, dest: Path, timeout: float = 60.0, max_bytes: int | None = None) -> Path:
+    """Скачивает файл по ссылке CDN. Делать сразу после скрапинга: ссылки быстро истекают."""
     dest.parent.mkdir(parents=True, exist_ok=True)
+    size = 0
     with httpx.stream("GET", video_url, timeout=timeout, follow_redirects=True) as response:
         response.raise_for_status()
         with dest.open("wb") as f:
             for chunk in response.iter_bytes():
+                size += len(chunk)
+                if max_bytes and size > max_bytes:
+                    raise ValueError(f"Видео больше {max_bytes // (1024 * 1024)} МБ — анализ не выполняется")
                 f.write(chunk)
     return dest
 

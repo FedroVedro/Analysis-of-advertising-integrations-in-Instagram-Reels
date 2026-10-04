@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -53,10 +53,26 @@ def init_db() -> None:
     for attempt in range(3):
         try:
             Base.metadata.create_all(engine)
+            _add_missing_columns()
             return
         except OperationalError as exc:
             if "already exists" not in str(exc) or attempt == 2:
                 raise
+
+
+def _add_missing_columns() -> None:
+    """Мини-миграция: create_all не добавляет новые колонки в существующие таблицы.
+
+    Хватает для добавления nullable-колонок; для чего-то сложнее — Alembic (пункт «что дальше»).
+    """
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            existing = {c["name"] for c in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name not in existing and column.nullable:
+                    col_type = column.type.compile(dialect=engine.dialect)
+                    conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {col_type}'))
 
 
 def get_session() -> Iterator[Session]:

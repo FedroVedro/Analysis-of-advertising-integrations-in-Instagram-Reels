@@ -1,11 +1,23 @@
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from app import worker
 from app.db import SessionLocal
 from app.jobs import create_jobs
 from app.models import Reel, ReelStatus
+from app.pipeline.analyze import AnalysisResult
 from app.scraper.apify_reels import ApifyScraperError, ReelResult
 from app.scraper.apify_reels import ReelStatus as ScrapeStatus
+
+
+@pytest.fixture(autouse=True)
+def fake_analysis(monkeypatch):
+    """Анализ видео ходит в сеть — в тестах воркера подменяем его готовым результатом."""
+    def fake(**kwargs):
+        return AnalysisResult(duration_sec=10.0, has_audio=True, transcript=None, integration_class=2,
+                              visibility_score=4, justification="4/5 · Реклама", analysis={})
+    monkeypatch.setattr(worker, "analyze_reel", fake)
 
 
 class FakeScraper:
@@ -33,6 +45,10 @@ def ok(code, **kw):
                       published_at=datetime(2026, 9, 1, tzinfo=timezone.utc), **kw)
 
 
+def ok_video(code):
+    return ok(code, video_url=f"https://cdn.example/{code}.mp4")
+
+
 def enqueue(*codes):
     with SessionLocal() as s:
         create_jobs(s, [f"https://www.instagram.com/reel/{c}/" for c in codes])
@@ -45,12 +61,13 @@ def reels():
 
 def test_batch_ok_and_unavailable():
     enqueue("AAAAA1", "BBBBB2")
-    scraper = FakeScraper({"AAAAA1": ok("AAAAA1")})
+    scraper = FakeScraper({"AAAAA1": ok_video("AAAAA1")})
     assert worker.process_batch(scraper) == 2
     assert len(scraper.calls) == 1  # один запуск Apify на пачку
     r = reels()
     assert r["AAAAA1"].status == ReelStatus.DONE
     assert r["AAAAA1"].views == 10 and r["AAAAA1"].likes is None
+    assert r["AAAAA1"].integration_class == 2 and r["AAAAA1"].visibility_score == 4
     assert r["BBBBB2"].status == ReelStatus.UNAVAILABLE
     assert r["BBBBB2"].error == "Ролик недоступен"
     assert worker.process_batch(scraper) == 0  # очередь пуста
@@ -80,7 +97,7 @@ def test_error_in_one_reel_does_not_affect_others(monkeypatch):
         original(reel_id)
 
     monkeypatch.setattr(worker, "_analyze", flaky)
-    worker.process_batch(FakeScraper({"AAAAA1": ok("AAAAA1"), "BBBBB2": ok("BBBBB2")}))
+    worker.process_batch(FakeScraper({"AAAAA1": ok_video("AAAAA1"), "BBBBB2": ok_video("BBBBB2")}))
     r = reels()
     assert r["AAAAA1"].status == ReelStatus.QUEUED and "boom" in r["AAAAA1"].error
     assert r["AAAAA1"].views == 10  # метрики сохранились, несмотря на сбой анализа
@@ -106,3 +123,14 @@ def test_claim_does_not_take_same_reel_twice():
     first = worker.claim_batch()
     assert len(first) == 2
     assert worker.claim_batch() == []
+
+
+def test_photo_post_is_unavailable_without_retries(monkeypatch):
+    enqueue("PHOTO1")
+    called = []
+    monkeypatch.setattr(worker, "analyze_reel", lambda **kw: called.append(kw))
+    worker.process_batch(FakeScraper({"PHOTO1": ok("PHOTO1")}))  # ok() без video_url — как фото-пост
+    r = reels()["PHOTO1"]
+    assert r.status == ReelStatus.UNAVAILABLE and "не содержит видео" in r.error
+    assert r.views == 10 and r.author == "bob"  # метрики сохранены
+    assert not called
