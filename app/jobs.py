@@ -113,6 +113,9 @@ def job_to_dict(job: Job) -> dict[str, Any]:
 
 
 def reel_to_dict(reel: Reel) -> dict[str, Any]:
+    analysis = reel.analysis or {}
+    placement = analysis.get("placement") or {}
+    review = analysis.get("review") or {}
     return {
         "id": reel.id,
         "shortcode": reel.shortcode,
@@ -133,6 +136,11 @@ def reel_to_dict(reel: Reel) -> dict[str, Any]:
         "visibility_score": reel.visibility_score,
         "justification": reel.justification,
         "analysis": reel.analysis,
+        # Вынесено отдельно, чтобы фронтенду не разбирать analysis
+        "placement_verdict": placement.get("verdict"),
+        "deduction_pct": placement.get("deduction_pct"),
+        "needs_review": bool(review.get("needed")),
+        "review_reasons": review.get("reasons") or [],
         "updated_at": _iso(reel.updated_at),
     }
 

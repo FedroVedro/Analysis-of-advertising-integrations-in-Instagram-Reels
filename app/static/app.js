@@ -37,6 +37,7 @@
     { key: '1',   label: 'Упоминание', test: r => r.status === 'done' && r.cls === 1 },
     { key: '0',   label: 'Нет',        test: r => r.status === 'done' && r.cls === 0 },
     { key: 'p',   label: 'Проблемы',   test: r => PROBLEM.includes(r.status) },
+    { key: 'r',   label: 'Проверить',  test: r => r.needsReview },
   ];
 
   const NF = new Intl.NumberFormat('ru-RU');
@@ -107,6 +108,9 @@
       just: reel.justification ?? null,
       transcript: reel.transcript ?? null,
       caption: reel.caption ?? null,
+      verdict: reel.placement_verdict ?? null,
+      needsReview: !!reel.needs_review,
+      reviewReasons: reel.review_reasons || [],
     };
   }
 
@@ -244,12 +248,13 @@
   }
 
   function downloadCsv() {
-    const head = ['Автор', 'Ссылка', 'Статус', 'Из кэша', 'Дата публикации', 'Просмотры', 'Лайки', 'Комментарии', 'Интеграция', 'Заметность', 'Обоснование', 'Ошибка'];
+    const head = ['Автор', 'Ссылка', 'Статус', 'Из кэша', 'Дата публикации', 'Просмотры', 'Лайки', 'Комментарии', 'Интеграция', 'Заметность', 'Размещение', 'Проверить вручную', 'Обоснование', 'Ошибка'];
     const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
     const body = state.rows.map(r => [
       r.author ? '@' + r.author : '', r.url, STATUS[r.status]?.label ?? r.status, r.cached ? 'да' : '',
       r.published ? fmtDate(r.published) : '', r.views, r.likes, r.comments,
-      r.status === 'done' && r.cls != null ? CLASSES[r.cls].label : '', r.vis, r.just, r.error,
+      r.status === 'done' && r.cls != null ? CLASSES[r.cls].label : '', r.vis, r.verdict,
+      r.needsReview ? r.reviewReasons.join('; ') : '', r.just, r.error,
     ].map(q).join(';'));
     // BOM + ";" — чтобы Excel с русской локалью открыл файл без мастера импорта
     const blob = new Blob(['﻿' + [head.map(q).join(';'), ...body].join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -336,6 +341,9 @@
     const badgeIcon = st.spin ? '<i class="ph ph-circle-notch spin"></i>'
       : st.pulse ? '<span class="pulse"></span>'
       : st.icon ? `<i class="ph ${st.icon}"></i>` : '';
+    const reviewHtml = r.needsReview
+      ? `<span class="review" title="${esc(r.reviewReasons.join('; '))}"><i class="ph ph-warning"></i>проверить</span>`
+      : '';
     const cachedHtml = r.cached
       ? '<span class="cached" title="Ролик уже проверялся, показан сохранённый результат"><i class="ph ph-clock-counter-clockwise"></i>из кэша</span>'
       : '';
@@ -357,7 +365,7 @@
   <div class="rrow" role="row" tabindex="0" data-id="${esc(r.id)}" aria-expanded="${open}">
     <div class="cell-reel">${authorHtml}${linkHtml}</div>
     <div class="cell-status">
-      <div class="status-line"><span class="pill ${st.cls}">${badgeIcon}${st.label}</span>${cachedHtml}</div>
+      <div class="status-line"><span class="pill ${st.cls}">${badgeIcon}${st.label}</span>${reviewHtml}${cachedHtml}</div>
       ${r.error ? `<span class="status-err">${esc(r.error)}</span>` : ''}
     </div>
     <span class="date">${fmtDate(r.published)}</span>

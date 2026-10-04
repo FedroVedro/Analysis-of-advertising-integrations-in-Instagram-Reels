@@ -79,6 +79,7 @@ a:hover { color: var(--color-accent-200); }
 .pill-red { background: var(--st-red-bg); color: var(--st-red-fg); }
 .pill .pulse { width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: currentColor; animation: ra-pulse 1.4s ease-in-out infinite; }
 
+.review { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--st-orange-fg); padding: 1px 6px; border-radius: 5px; background: var(--st-orange-bg); cursor: help; }
 .cached { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--color-neutral-400); padding: 1px 6px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--color-neutral-800); cursor: help; }
 
 .segs { display: flex; gap: 3px; }

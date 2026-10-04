@@ -29,7 +29,10 @@ class Settings(BaseSettings):
 
     # Анализ видео (этапы 4–6)
     ffmpeg_path: str | None = None  # по умолчанию ffmpeg из PATH или из пакета imageio-ffmpeg
-    analysis_max_frames: int = 60  # 1 кадр/с; длинные ролики — равномерная выборка
+    analysis_max_frames: int = 60  # для vision-модели: 1 кадр/с; длинные ролики — равномерная выборка
+    logo_fps: float = 4.0  # поиск логотипа по эталону (OpenCV) — дёшево, поэтому чаще
+    logo_max_frames: int = 240
+    vision_key_frames: int = 3  # сколько характерных кадров отдать vision-модели, если логотип найден
     analysis_concurrency: int = 3  # сколько роликов анализируется одновременно
     vision_batch_size: int = 8  # кадров в одном запросе к vision-модели
     vision_concurrency: int = 2  # параллельных запросов к vision-модели на ролик (квота ключа NeuroAPI)

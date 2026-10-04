@@ -5,3 +5,4 @@ pydantic-settings>=2.4
 apify-client>=3.2,<4
 httpx>=0.27
 openai>=1.40
+opencv-python-headless>=4.9

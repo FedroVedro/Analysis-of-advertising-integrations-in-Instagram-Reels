@@ -21,6 +21,7 @@ def build_justification(
     transcript: Transcript | None,
     audio_note: str | None,
     sampled: bool,
+    review: list[str] | None = None,
 ) -> str:
     if cls.integration_class == 0:
         lines = [cls.reasoning or "Skycoach не найден ни в кадре, ни в речи, ни в подписи."]
@@ -31,10 +32,14 @@ def build_justification(
     pct, verdict = deduction(issues)
     summary = [f"{score}/5", CLASS_NAMES[cls.integration_class]]
     if facts.visible:
-        summary.append(f"баннер {_secs(facts.seconds)} с ({facts.share:.0%}), ≈{facts.area_pct:g} % кадра")
+        size = f"логотип ≈{facts.logo_width_pct:g} % ширины" if facts.logo_width_pct is not None \
+            else f"≈{facts.area_pct:g} % кадра" if facts.area_pct is not None else ""
+        summary.append(f"баннер {_secs(facts.seconds)} с ({facts.share:.0%})" + (f", {size}" if size else ""))
     else:
         summary.append("баннера в кадре нет")
     summary.append(verdict)
+    if review:
+        summary.append("проверить вручную")
     lines = [" · ".join(summary)]
 
     if facts.visible:
@@ -43,8 +48,13 @@ def build_justification(
             intervals += f" и ещё {len(facts.intervals) - MAX_INTERVALS}"
         banner = (
             f"Баннер: в кадре ≈{_secs(facts.seconds)} с из {facts.duration:.0f} ({facts.share:.0%}), {intervals}; "
-            f"{facts.position} (≈{facts.top_pct:g}–{facts.bottom_pct:g} % высоты); ширина ≈{facts.width_pct:g} % кадра, площадь ≈{facts.area_pct:g} %."
+            f"{facts.position} (≈{facts.top_pct:g}–{facts.bottom_pct:g} % высоты)"
         )
+        if facts.logo_width_pct is not None:
+            banner += f"; логотип ≈{facts.logo_width_pct:g} % ширины кадра (замер по эталону)"
+        if facts.plate_measured:
+            banner += f"; плашка ≈{facts.width_pct:g} % ширины, ≈{facts.area_pct:g} % площади"
+        banner += "."
         if facts.texts:
             banner += f" Текст: «{facts.texts[0][:120]}»."
         lines.append(banner)
@@ -79,6 +89,8 @@ def build_justification(
     else:
         lines.append("Размещение по правилам Skycoach: без замечаний.")
 
+    if review:
+        lines.append("⚠ Нужна ручная проверка: " + "; ".join(review) + ".")
     if cls.reasoning:
         lines.append(f"Класс: {cls.reasoning}")
     if sampled:

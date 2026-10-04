@@ -66,14 +66,15 @@ def probe(path: Path) -> ProbeResult:
     return ProbeResult(duration, "Audio:" in info, width, height)
 
 
-def extract_frames(video: Path, out_dir: Path, duration: float, max_frames: int) -> list[tuple[float, Path]]:
-    """Кадры раз в секунду; для длинных роликов — равномерно `max_frames` штук.
+def extract_frames(video: Path, out_dir: Path, duration: float, max_frames: int,
+                   fps: float = 1.0, long_side: int = FRAME_LONG_SIDE) -> list[tuple[float, Path]]:
+    """Кадры с частотой `fps`; для длинных роликов — равномерно `max_frames` штук.
 
-    Возвращает (секунда кадра, путь). Шаг между кадрами = duration / число кадров.
+    Возвращает (секунда кадра, путь). Шаг между кадрами = 1 / итоговая частота.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    fps = 1.0 if duration <= max_frames else max_frames / duration
-    scale = f"scale='if(gt(iw,ih),{FRAME_LONG_SIDE},-2)':'if(gt(iw,ih),-2,{FRAME_LONG_SIDE})'"
+    fps = fps if duration * fps <= max_frames else max_frames / duration
+    scale = f"scale='if(gt(iw,ih),{long_side},-2)':'if(gt(iw,ih),-2,{long_side})'"
     result = _run([
         "-v", "error", "-y", "-i", str(video),
         "-vf", f"fps={fps:.6f},{scale}", "-q:v", "4",

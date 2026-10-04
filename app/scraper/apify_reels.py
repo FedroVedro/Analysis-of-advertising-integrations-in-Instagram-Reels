@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -209,9 +210,28 @@ class ApifyReelsScraper:
         result.mentions = item.get("mentions") or []
 
 
+DOWNLOAD_RETRY_DELAYS = (2, 5)
+
+
 def download_video(video_url: str, dest: Path, timeout: float = 60.0, max_bytes: int | None = None) -> Path:
-    """Скачивает файл по ссылке CDN. Делать сразу после скрапинга: ссылки быстро истекают."""
+    """Скачивает файл по ссылке CDN. Делать сразу после скрапинга: ссылки быстро истекают.
+
+    Обрывы связи с CDN (SSL EOF, таймауты) повторяем на месте — иначе ролик ушёл бы на полный
+    повтор задачи с новым запуском Apify. Ответ 4xx (ссылка истекла) не повторяем.
+    """
     dest.parent.mkdir(parents=True, exist_ok=True)
+    for attempt, delay in enumerate((*DOWNLOAD_RETRY_DELAYS, None), start=1):
+        try:
+            return _download_once(video_url, dest, timeout, max_bytes)
+        except httpx.TransportError as exc:
+            if delay is None:
+                raise
+            logger.warning("Скачивание: попытка %d не удалась (%s), повтор через %d с", attempt, exc, delay)
+            time.sleep(delay)
+    raise AssertionError("unreachable")
+
+
+def _download_once(video_url: str, dest: Path, timeout: float, max_bytes: int | None) -> Path:
     size = 0
     with httpx.stream("GET", video_url, timeout=timeout, follow_redirects=True) as response:
         response.raise_for_status()

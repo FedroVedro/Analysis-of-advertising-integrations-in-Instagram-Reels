@@ -1,0 +1,28 @@
+id,source,expected_class,expected_deduction,split,note
+DceO7gsR0w-,https://www.instagram.com/valorant_funzone/reel/DceO7gsR0w-/,2,0,calibration,Skycoach: good
+Db3C60btk6E,https://www.instagram.com/valorant_funzone/reel/Db3C60btk6E/,2,0,calibration,Skycoach: good
+Dblv_p8RP4T,https://www.instagram.com/valorant_funzone/reel/Dblv_p8RP4T/,2,0,calibration,Skycoach: good (баннер на 82–93 % высоты)
+DcUEhNgx8Il,https://www.instagram.com/valorant_funzone/reel/DcUEhNgx8Il/,2,0,calibration,Skycoach: good
+DbRI307xMEy,https://www.instagram.com/valorant_funzone/reel/DbRI307xMEy/,2,0,calibration,Skycoach: good (баннер внизу)
+DcGL4wUxUuD,https://www.instagram.com/valorant_funzone/reel/DcGL4wUxUuD/,2,0,calibration,Skycoach: good
+Db4DAa2NxKI,https://www.instagram.com/valorant_funzone/reel/Db4DAa2NxKI/,2,0,calibration,Skycoach: good
+DcRQaD_tcXY,https://www.instagram.com/valorant_funzone/reel/DcRQaD_tcXY/,2,0,calibration,Skycoach: good
+DcJZgGcNDlR,https://www.instagram.com/valorant_funzone/reel/DcJZgGcNDlR/,2,0,calibration,Skycoach: good
+Dbq3G4QR9m-,https://www.instagram.com/valorant_funzone/reel/Dbq3G4QR9m-/,2,0,calibration,Skycoach: good
+DcTCcOaxKs2,https://www.instagram.com/valorant_funzone/reel/DcTCcOaxKs2/,2,0,calibration,Skycoach: good
+DcCCzPcR4fy,https://www.instagram.com/valorant_funzone/reel/DcCCzPcR4fy/,2,0,calibration,Skycoach: good
+Dbghg_3RrsX,https://www.instagram.com/valorant_funzone/reel/Dbghg_3RrsX/,2,0,calibration,Skycoach: good
+DcN8OaeNgED,https://www.instagram.com/valorant_funzone/reel/DcN8OaeNgED/,2,0,calibration,Skycoach: good
+DbvW6YmNIFm,https://www.instagram.com/valorant_funzone/reel/DbvW6YmNIFm/,2,0,calibration,Skycoach: good
+Db6eg4uRREF,https://www.instagram.com/valorant_funzone/reel/Db6eg4uRREF/,2,0,calibration,Skycoach: good
+Dbfo3kdt5eh,https://www.instagram.com/valorant_funzone/reel/Dbfo3kdt5eh/,2,0,calibration,Skycoach: good
+DbQGs9HMcOQ,https://www.instagram.com/reel/DbQGs9HMcOQ/,2,30,calibration,Skycoach: banner too small −30 %
+DbpiVrpMa1j,https://www.instagram.com/reel/DbpiVrpMa1j/,2,20,calibration,Skycoach: banner small and partly covered −20 %
+syn_clipped,synthetic:clipped,2,20,synthetic,Db3C60btk6E сдвинут влево на 25 % — логотип срезан краем
+syn_covered,synthetic:covered,2,20,synthetic,Db3C60btk6E сдвинут вниз — баннер на 86–97 % высоты
+syn_no_audio,synthetic:no_audio,2,0,synthetic,без аудиодорожки
+syn_silent,synthetic:silent_track,2,0,synthetic,беззвучная дорожка
+syn_long,synthetic:long,2,0,synthetic,20 повторов — 10 минут
+syn_no_skycoach_1,synthetic:no_skycoach,0,na,synthetic,первые 9 с Db3C60btk6E — до баннера
+syn_no_skycoach_2,synthetic:no_skycoach_poe,0,na,synthetic,первые 8 с DbQGs9HMcOQ — до баннера
+syn_no_skycoach_3,synthetic:no_skycoach_poe2,0,na,synthetic,первые 6 с DbpiVrpMa1j — до баннера

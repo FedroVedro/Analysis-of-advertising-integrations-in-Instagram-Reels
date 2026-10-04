@@ -13,12 +13,14 @@ from typing import Any
 
 from app.config import get_settings
 from app.errors import NonRetryableError
-from app.pipeline import media
+from app.pipeline import logo, media
 from app.pipeline.classify import classify
 from app.pipeline.report import build_justification
-from app.pipeline.scoring import aggregate, deduction, placement_issues, visibility_score
+from app.pipeline.scoring import (
+    aggregate, aggregate_hybrid, deduction, placement_issues, review_reasons, visibility_score,
+)
 from app.pipeline.transcribe import Transcript, transcribe
-from app.pipeline.vision import detect
+from app.pipeline.vision import FrameDetection, detect
 from app.scraper.apify_reels import download_video
 
 logger = logging.getLogger(__name__)
@@ -54,13 +56,11 @@ def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None
         sampled = duration > settings.analysis_max_frames
         with ThreadPoolExecutor(max_workers=2) as pool:
             audio_future = pool.submit(_process_audio, video, info.has_audio_stream, audio_url, tmp_dir)
-            frames = media.extract_frames(video, tmp_dir / "frames", duration, settings.analysis_max_frames)
-            detections = detect(frames)
+            facts, vision_failed = _analyze_frames(video, tmp_dir, duration)
             has_audio, transcript, audio_note, audio_meta = audio_future.result()
 
-    step = duration / len(frames) if sampled else 1.0
-    facts = aggregate(detections, duration, step)
     cls = classify(caption, transcript, facts)
+    review = review_reasons(facts, vision_failed=vision_failed) if cls.integration_class else []
 
     if cls.integration_class == 0:
         score, score_reasons, issues = None, [], []
@@ -71,7 +71,7 @@ def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None
 
     justification = build_justification(
         cls=cls, facts=facts, score=score, score_reasons=score_reasons, issues=issues,
-        transcript=transcript, audio_note=audio_note, sampled=sampled,
+        transcript=transcript, audio_note=audio_note, sampled=sampled, review=review,
     )
     analysis = {
         "banner": facts.to_dict(),
@@ -90,6 +90,7 @@ def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None
             "used_llm": cls.used_llm,
         },
         "score_reasons": score_reasons,
+        "review": {"needed": bool(review), "reasons": review},
         "audio": audio_meta,
         "sampled": sampled,
         "models": {
@@ -107,6 +108,50 @@ def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None
         justification=justification,
         analysis=analysis,
     )
+
+
+def _analyze_frames(video: Path, tmp_dir: Path, duration: float):
+    """Логотип по эталону на 4 кадрах/с; vision-модели — только характерные кадры.
+
+    Логотип не найден → полный проход vision-модели (новый дизайн баннера, сильная обрезка).
+    Возвращает (факты, vision_failed).
+    """
+    settings = get_settings()
+    vision_frames = media.extract_frames(video, tmp_dir / "frames", duration, settings.analysis_max_frames)
+    logo_frames = media.extract_frames(video, tmp_dir / "logo", duration, settings.logo_max_frames,
+                                       fps=settings.logo_fps, long_side=1280)
+    hits = logo.detect(logo_frames)
+    logo_step = duration / len(logo_frames) if duration * settings.logo_fps > settings.logo_max_frames \
+        else 1 / settings.logo_fps
+
+    if not any(h.found for h in hits):
+        step = duration / len(vision_frames) if duration > settings.analysis_max_frames else 1.0
+        return aggregate(detect(vision_frames), duration, step), False
+
+    plate: list[FrameDetection] = []
+    vision_failed = False
+    try:
+        plate = detect(_key_frames(vision_frames, hits, settings.vision_key_frames))
+    except Exception as exc:
+        # Без модели всё равно есть время и размер логотипа — результат полезен, но помечается к проверке
+        if isinstance(exc, NonRetryableError):
+            raise
+        logger.warning("Vision-модель недоступна, анализ только по логотипу: %s", exc)
+        vision_failed = True
+    return aggregate_hybrid(hits, plate, duration, logo_step), vision_failed
+
+
+def _key_frames(frames: list[tuple[float, Path]], hits: list[logo.LogoHit], k: int) -> list[tuple[float, Path]]:
+    """Кадры 1/с, ближайшие к самым уверенным находкам логотипа, разнесённые по времени."""
+    found = sorted((h for h in hits if h.found), key=lambda h: -h.score)
+    chosen: list[tuple[float, Path]] = []
+    for h in found:
+        frame = min(frames, key=lambda f: abs(f[0] - h.t))
+        if frame not in chosen and all(abs(frame[0] - c[0]) >= 1.5 for c in chosen):
+            chosen.append(frame)
+        if len(chosen) == k:
+            break
+    return sorted(chosen) or [min(frames, key=lambda f: abs(f[0] - found[0].t))]
 
 
 def _process_audio(video: Path, has_stream: bool, audio_url: str | None, tmp_dir: Path):
