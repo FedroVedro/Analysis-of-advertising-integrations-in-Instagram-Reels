@@ -209,9 +209,6 @@ python eval/evaluate.py --logo-only  # без NeuroAPI: только логот�
 4. **PostgreSQL + Redis/RQ и несколько воркеров**, Alembic для миграций — когда поток вырастет.
 5. **Перевод ошибок Instagram** на понятный менеджеру язык, авторизация, выгрузка в Google Sheets.
 
-## Расходы
-
-Apify: ≈$0.003 за ролик.
 
 ## Лицензия
 
