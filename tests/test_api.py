@@ -63,3 +63,27 @@ def test_get_jobs(client):
     assert client.get(f"/api/jobs/{ids[0]}").json()["job_id"] == ids[0]
     assert client.get("/api/jobs/nope").status_code == 404
     assert len(client.get("/api/reels").json()["reels"]) == 1
+
+
+def _set_unavailable(hours_ago):
+    from datetime import datetime, timedelta, timezone
+    with SessionLocal() as s:
+        reel = s.query(Reel).one()
+        reel.status, reel.error = ReelStatus.UNAVAILABLE, "Post does not exist"
+        s.commit()
+        reel.updated_at = datetime.now(timezone.utc) - timedelta(hours=hours_ago)  # onupdate перезаписал бы
+        s.commit()
+
+
+def test_recent_unavailable_is_cached(client):
+    client.post("/api/jobs", json={"urls": [REEL]})
+    _set_unavailable(hours_ago=1)
+    job = client.post("/api/jobs", json={"urls": [REEL]}).json()["jobs"][0]
+    assert job["status"] == "unavailable" and job["cached"] is True
+
+
+def test_old_unavailable_is_rechecked(client):
+    client.post("/api/jobs", json={"urls": [REEL]})
+    _set_unavailable(hours_ago=7)
+    job = client.post("/api/jobs", json={"urls": [REEL]}).json()["jobs"][0]
+    assert job["status"] == "queued" and job["cached"] is False

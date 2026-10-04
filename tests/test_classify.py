@@ -50,3 +50,25 @@ def test_skycoach_misspelling_in_speech_counts_as_mention(monkeypatch):
             return "[0:14] go to sky coach dot gg"
     cl.classify("", T(), facts(visible=False))
     assert called
+
+
+def _llm_json(monkeypatch, payload):
+    import json, types
+    resp = types.SimpleNamespace(choices=[types.SimpleNamespace(message=types.SimpleNamespace(content=json.dumps(payload)))])
+    monkeypatch.setattr(cl, "chat", lambda **kw: resp)
+
+
+def test_promo_code_as_string_is_not_split_into_letters(monkeypatch):
+    _llm_json(monkeypatch, {"integration_class": 2, "promo_codes": "VALFUN", "caption_cta": True})
+    result = cl.classify("Reyna guide, love this agent", None, facts())
+    assert result.promo_codes == ["VALFUN"]
+    assert not result.caption_mention and not result.caption_cta  # раньше буквы «находились» в подписи
+
+
+def test_class_as_string_is_respected(monkeypatch):
+    _llm_json(monkeypatch, {"integration_class": "2", "voice_cta": True})
+
+    class T:
+        def with_timestamps(self):
+            return "[0:05] go to skycoach and use my code"
+    assert cl.classify("", T(), facts(visible=False)).integration_class == 2

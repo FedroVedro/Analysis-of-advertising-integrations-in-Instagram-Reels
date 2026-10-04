@@ -25,6 +25,7 @@ import httpx
 from apify_client import ApifyClient
 
 from app.config import get_settings
+from app.errors import ConfigError, NonRetryableError
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ class ApifyReelsScraper:
     def __init__(self, token: str | None = None, actor_id: str = ACTOR_ID) -> None:
         token = token or get_settings().apify_token
         if not token:
-            raise ValueError("APIFY_TOKEN не задан")
+            raise ConfigError("Сервис не настроен: не задан APIFY_TOKEN")
         self._client = ApifyClient(token)
         self._actor_id = actor_id
 
@@ -218,7 +219,7 @@ def download_video(video_url: str, dest: Path, timeout: float = 60.0, max_bytes:
             for chunk in response.iter_bytes():
                 size += len(chunk)
                 if max_bytes and size > max_bytes:
-                    raise ValueError(f"Видео больше {max_bytes // (1024 * 1024)} МБ — анализ не выполняется")
+                    raise NonRetryableError(f"Видео больше {max_bytes // (1024 * 1024)} МБ — анализ не выполняется")
                 f.write(chunk)
     return dest
 

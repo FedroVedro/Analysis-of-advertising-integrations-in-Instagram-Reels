@@ -12,12 +12,13 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.config import get_settings
+from app.errors import NonRetryableError
 
 FRAME_LONG_SIDE = 768  # логотип ещё читается, токенов у vision-модели заметно меньше
 
 
-class MediaError(RuntimeError):
-    pass
+class MediaError(NonRetryableError):
+    """Файл не обрабатывается ffmpeg — повтор того же файла не поможет."""
 
 
 @lru_cache

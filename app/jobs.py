@@ -1,12 +1,13 @@
 """Приём ссылок: создание задач, дедупликация роликов, сериализация результатов."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session, selectinload
 
+from app.config import get_settings
 from app.models import Job, Reel, ReelStatus, new_id
 from app.scraper.apify_reels import canonical_reel_url, extract_shortcode
 
@@ -48,8 +49,8 @@ def create_jobs(session: Session, urls: list[str]) -> list[Job]:
             job = Job(input_url=url, status=INVALID_URL, error=INVALID_URL_ERROR)
         else:
             reel = _get_or_create_reel(session, shortcode)
-            if reel.status == ReelStatus.FAILED:
-                # Внутренняя ошибка: при повторной отправке пробуем ещё раз
+            if reel.status == ReelStatus.FAILED or _stale_unavailable(reel):
+                # Внутренняя ошибка или давний «недоступен» (мог быть временным сбоем) — пробуем ещё раз
                 reel.status, reel.error, reel.attempts = ReelStatus.QUEUED, None, 0
             cached = reel.status in (ReelStatus.DONE, ReelStatus.UNAVAILABLE)
             job = Job(input_url=url, reel=reel, cached=cached)
@@ -57,6 +58,13 @@ def create_jobs(session: Session, urls: list[str]) -> list[Job]:
         jobs.append(job)
     session.commit()
     return jobs
+
+
+def _stale_unavailable(reel: Reel) -> bool:
+    if reel.status != ReelStatus.UNAVAILABLE or reel.updated_at is None:
+        return False
+    updated = reel.updated_at if reel.updated_at.tzinfo else reel.updated_at.replace(tzinfo=timezone.utc)
+    return _utcnow() - updated > timedelta(hours=get_settings().unavailable_recheck_hours)
 
 
 def _get_or_create_reel(session: Session, shortcode: str) -> Reel:

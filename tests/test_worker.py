@@ -134,3 +134,28 @@ def test_photo_post_is_unavailable_without_retries(monkeypatch):
     assert r.status == ReelStatus.UNAVAILABLE and "не содержит видео" in r.error
     assert r.views == 10 and r.author == "bob"  # метрики сохранены
     assert not called
+
+
+def test_non_retryable_error_fails_at_once(monkeypatch):
+    from app.errors import NonRetryableError
+    enqueue("BIGVID1")
+    def too_big(**kw):
+        raise NonRetryableError("Видео больше 300 МБ — анализ не выполняется")
+    monkeypatch.setattr(worker, "analyze_reel", too_big)
+    scraper = FakeScraper({"BIGVID1": ok_video("BIGVID1")})
+    worker.process_batch(scraper)
+    r = reels()["BIGVID1"]
+    assert r.status == ReelStatus.FAILED and "300 МБ" in r.error
+    assert worker.process_batch(scraper) == 0 and len(scraper.calls) == 1  # без новых запусков Apify
+    assert r.views == 10  # метрики сохранены
+
+
+def test_worker_without_apify_token_keeps_running(monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "apify_token", None)
+    w = worker.Worker()  # раньше падал с ValueError и в общем контейнере ронял сайт
+    assert w.scraper is None and "APIFY_TOKEN" in w.config_error
+    enqueue("AAAAA1")
+    assert worker.fail_batch(w.config_error) == 1
+    r = reels()["AAAAA1"]
+    assert r.status == ReelStatus.FAILED and "APIFY_TOKEN" in r.error

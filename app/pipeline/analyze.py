@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import get_settings
+from app.errors import NonRetryableError
 from app.pipeline import media
 from app.pipeline.classify import classify
 from app.pipeline.report import build_justification
@@ -28,7 +29,7 @@ SILENCE_DB = -50.0  # средняя громкость ниже — счита�
 @dataclass
 class AnalysisResult:
     duration_sec: float | None
-    has_audio: bool
+    has_audio: bool | None  # None — звук получить не удалось
     transcript: str | None
     integration_class: int
     visibility_score: int | None
@@ -39,7 +40,7 @@ class AnalysisResult:
 def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None,
                  caption: str | None, duration_hint: float | None) -> AnalysisResult:
     if not video_url:
-        raise RuntimeError("Apify не вернул ссылку на видео — анализ невозможен")
+        raise NonRetryableError("Apify не вернул ссылку на видео — анализ невозможен")
     settings = get_settings()
 
     with tempfile.TemporaryDirectory(prefix=f"reel_{shortcode}_") as tmp:
@@ -48,7 +49,7 @@ def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None
         info = media.probe(video)
         duration = info.duration or duration_hint
         if not duration:
-            raise RuntimeError("Не удалось определить длительность видео")
+            raise NonRetryableError("Не удалось определить длительность видео")
 
         sampled = duration > settings.analysis_max_frames
         with ThreadPoolExecutor(max_workers=2) as pool:
@@ -109,9 +110,21 @@ def analyze_reel(*, shortcode: str, video_url: str | None, audio_url: str | None
 
 
 def _process_audio(video: Path, has_stream: bool, audio_url: str | None, tmp_dir: Path):
-    """Возвращает (has_audio, transcript, примечание для обоснования, метаданные)."""
+    """Возвращает (has_audio, transcript, примечание для обоснования, метаданные).
+
+    Любой сбой со звуком не валит ролик: кадры уже проанализированы, а речь — лишь часть картины.
+    """
+    meta: dict[str, Any] = {"source": None, "mean_volume_db": None, "transcribe_error": None, "audio_error": None}
+    try:
+        return _process_audio_inner(video, has_stream, audio_url, tmp_dir, meta)
+    except Exception as exc:
+        logger.warning("Звук не обработан: %s", exc)
+        meta["audio_error"] = str(exc)[:300]
+        return None, None, "Звук получить не удалось — анализ только по изображению и подписи.", meta
+
+
+def _process_audio_inner(video: Path, has_stream: bool, audio_url: str | None, tmp_dir: Path, meta: dict):
     settings = get_settings()
-    meta: dict[str, Any] = {"source": None, "mean_volume_db": None, "transcribe_error": None}
 
     # Instagram часто отдаёт видео и звук отдельными потоками: тогда звук берём по audioUrl
     if has_stream:

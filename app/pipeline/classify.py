@@ -11,7 +11,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-from app.ai import get_ai_client
+from app.ai import chat
 from app.config import get_settings
 from app.pipeline.scoring import BannerFacts
 from app.pipeline.transcribe import Transcript
@@ -101,7 +101,7 @@ def _ask_llm(caption: str, speech: str, banner: str, other: str) -> Classificati
         banner=banner[:1000] or "(no banner detected)",
         other=other[:1000] or "(none)",
     )
-    response = get_ai_client().chat.completions.create(
+    response = chat(
         model=get_settings().ai_text_model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
@@ -114,14 +114,31 @@ def _ask_llm(caption: str, speech: str, banner: str, other: str) -> Classificati
     except ValueError as exc:
         raise RuntimeError(f"Текстовая модель вернула невалидный JSON: {text[:200]}") from exc
 
-    cls = data.get("integration_class")
     return Classification(
-        integration_class=cls if cls in (0, 1, 2) else 1,
+        integration_class=_as_class(data.get("integration_class")),
         voice_mentions=[m for m in data.get("voice_mentions") or [] if isinstance(m, dict) and m.get("quote")],
         voice_cta=bool(data.get("voice_cta")),
         caption_mention=bool(data.get("caption_mention")),
         caption_cta=bool(data.get("caption_cta")),
-        promo_codes=[str(c) for c in data.get("promo_codes") or [] if c],
+        promo_codes=_as_list(data.get("promo_codes")),
         reasoning=str(data.get("reasoning") or "").strip(),
         used_llm=True,
     )
+
+
+def _as_class(value) -> int:
+    """Модель может вернуть класс строкой («2») — без приведения ролик с рекламой голосом стал бы классом 1."""
+    try:
+        cls = int(str(value).strip())
+    except (TypeError, ValueError):
+        return 1
+    return cls if cls in (0, 1, 2) else 1
+
+
+def _as_list(value) -> list[str]:
+    """Строку «VALFUN» не разбиваем на буквы: иначе одиночные буквы «находились» бы в любой подписи."""
+    if isinstance(value, str):
+        value = [value]
+    if not isinstance(value, list):
+        return []
+    return [str(v).strip() for v in value if isinstance(v, (str, int)) and str(v).strip()]

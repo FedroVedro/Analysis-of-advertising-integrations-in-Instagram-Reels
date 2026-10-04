@@ -9,22 +9,17 @@ import base64
 import json
 import logging
 import re
-import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-import openai
-
-from app.ai import get_ai_client
+from app.ai import chat
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 VISION_MAX_TOKENS_BASE = 2000
 VISION_MAX_TOKENS_PER_FRAME = 300
-# 429/5xx и 403 «нет квоты на резерв» у NeuroAPI проходят при повторе, когда параллельные запросы завершатся
-RETRY_DELAYS = (5, 15, 30)
 
 PROMPT = """You inspect frames from short vertical videos (Instagram Reels) for a Skycoach sponsorship banner.
 Skycoach is a gaming services marketplace (boosting, coaching). Its banner is usually a rectangular plate
@@ -73,7 +68,7 @@ def _detect_batch(batch: list[tuple[float, Path]]) -> list[FrameDetection]:
 
     last_error: Exception | None = None
     for _ in range(2):  # один повтор, если модель вернула невалидный JSON
-        response = _create_with_retry(
+        response = chat(
             model=get_settings().ai_vision_model,
             messages=[{"role": "user", "content": content}],
             temperature=0,
@@ -91,27 +86,35 @@ def _detect_batch(batch: list[tuple[float, Path]]) -> list[FrameDetection]:
     else:
         raise RuntimeError(f"Vision-модель вернула невалидный ответ: {last_error}")
 
-    by_frame = {int(it.get("frame", 0)): it for it in items if isinstance(it, dict)}
-    detections = []
-    for i, (t, _path) in enumerate(batch, start=1):
-        # Если модель пропустила кадр — считаем, что баннера на нём нет
-        it = by_frame.get(i) or (items[i - 1] if len(items) == len(batch) else {})
-        detections.append(_to_detection(t, it))
-    return detections
+    return [_to_detection(t, it) for (t, _path), it in zip(batch, _align(items, len(batch)))]
 
 
-def _create_with_retry(**kwargs):
-    for attempt, delay in enumerate((*RETRY_DELAYS, None), start=1):
-        try:
-            return get_ai_client().chat.completions.create(**kwargs)
-        except (openai.APIStatusError, openai.APIConnectionError) as exc:
-            status = getattr(exc, "status_code", None)
-            quota = status == 403 and "quota" in str(exc).lower()
-            retryable = status is None or status == 429 or status >= 500 or quota
-            if not retryable or delay is None:
-                raise
-            logger.warning("Vision: попытка %d не удалась (%s), повтор через %d с", attempt, status, delay)
-            time.sleep(delay)
+def _align(items: list, n: int) -> list[dict]:
+    """Сопоставляет ответы модели кадрам 1..n.
+
+    Модель может написать номер строкой («frame 3»), пропустить его или посчитать кадры с нуля —
+    тогда сдвигаем нумерацию, иначе каждый кадр получил бы ответ соседнего.
+    Пропущенный кадр считается кадром без баннера.
+    """
+    objs = [it for it in items if isinstance(it, dict)]
+    numbers = [_frame_number(it.get("frame")) for it in objs]
+    known = [x for x in numbers if x is not None]
+    if known and min(known) == 0:
+        numbers = [x + 1 if x is not None else None for x in numbers]
+    by_number = {x: it for x, it in zip(numbers, objs) if x is not None and 1 <= x <= n}
+    if len(by_number) < len(objs) and len(objs) == n:
+        return objs  # номера не разобрать, но ответов ровно столько, сколько кадров — берём по порядку
+    return [by_number.get(i, {}) for i in range(1, n + 1)]
+
+
+def _frame_number(value) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str) and (m := re.search(r"\d+", value)):
+        return int(m.group())
+    return None
 
 
 def _parse(text: str) -> list:

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     vision_concurrency: int = 2  # параллельных запросов к vision-модели на ролик (квота ключа NeuroAPI)
     max_transcribe_seconds: int = 900  # речь дальше 15 минут не транскрибируем
     max_video_mb: int = 300
+    # «Недоступен» мог быть временным сбоем Apify: повторная отправка старше N часов перепроверяет ролик
+    unavailable_recheck_hours: int = 6
 
     # Защита публичного URL от расходов на Apify/AI
     rate_limit_requests: int = 20  # POST /api/jobs с одного IP ...

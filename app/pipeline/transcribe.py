@@ -2,13 +2,10 @@
 
 import logging
 import re
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import openai
-
-from app.ai import get_transcribe_client
+from app.ai import get_transcribe_client, with_retry
 from app.config import get_settings
 
 # Подсказка повышает шанс, что Whisper напишет название бренда правильно
@@ -22,7 +19,7 @@ HALLUCINATION_RE = re.compile(
     r"thanks? (you )?for watching|subscribe|amara\.org",
     re.IGNORECASE,
 )
-# Шлюз под нагрузкой отвечает 503 «слишком большая нагрузка» — ждём и повторяем
+# Шлюз под нагрузкой отвечает 503 «слишком большая нагрузка» — ждём подольше, чем для чата
 RETRY_DELAYS = (10, 30)
 
 logger = logging.getLogger(__name__)
@@ -54,24 +51,17 @@ def fmt_time(seconds: float) -> str:
 
 
 def transcribe(audio: Path) -> Transcript:
-    for attempt, delay in enumerate((*RETRY_DELAYS, None), start=1):
-        try:
-            with audio.open("rb") as f:
-                response = get_transcribe_client().audio.transcriptions.create(
-                    model=get_settings().ai_transcribe_model,
-                    file=f,
-                    response_format="verbose_json",
-                    prompt=PROMPT,
-                    temperature=0,
-                )
-            break
-        except (openai.APIStatusError, openai.APIConnectionError) as exc:
-            status = getattr(exc, "status_code", None)
-            retryable = status is None or status == 429 or status >= 500
-            if not retryable or delay is None:
-                raise
-            logger.warning("Транскрипция: попытка %d не удалась (%s), повтор через %d с", attempt, status, delay)
-            time.sleep(delay)
+    def call():
+        with audio.open("rb") as f:
+            return get_transcribe_client().audio.transcriptions.create(
+                model=get_settings().ai_transcribe_model,
+                file=f,
+                response_format="verbose_json",
+                prompt=PROMPT,
+                temperature=0,
+            )
+
+    response = with_retry(call, "Транскрипция", RETRY_DELAYS)
     data = response.model_dump() if hasattr(response, "model_dump") else dict(response)
     segments = [
         Segment(float(s["start"]), float(s["end"]), s["text"].strip())

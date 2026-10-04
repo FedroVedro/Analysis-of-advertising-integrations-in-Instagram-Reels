@@ -16,6 +16,7 @@ from sqlalchemy import select, update
 
 from app.config import get_settings
 from app.db import SessionLocal, init_db
+from app.errors import ConfigError, NonRetryableError
 from app.models import Reel, ReelStatus
 from app.pipeline.analyze import analyze_reel
 from app.scraper.apify_reels import (
@@ -119,9 +120,20 @@ def process_batch(scraper: ApifyReelsScraper) -> int:
     return len(reels)
 
 
+def fail_batch(error: str) -> int:
+    """Сервис не настроен: забираем ролики из очереди и сразу помечаем ошибкой с причиной."""
+    reels = claim_batch()
+    for reel in reels:
+        _fail_now(reel.id, error)
+    return len(reels)
+
+
 def _analyze_safely(reel: Reel) -> None:
     try:
         _analyze(reel.id)
+    except NonRetryableError as exc:
+        logger.error("%s: %s", reel.shortcode, exc)
+        _fail_now(reel.id, str(exc))
     except Exception as exc:
         # Ошибка одного ролика не должна валить воркер и остальные ролики
         logger.exception("Ошибка анализа %s", reel.shortcode)
@@ -196,6 +208,15 @@ def _analyze(reel_id: str) -> None:
     )
 
 
+def _fail_now(reel_id: str, error: str) -> None:
+    """Повтор не поможет (битое/огромное видео, нет настроек) — сразу failed, без новых запусков Apify."""
+    with SessionLocal() as session:
+        reel = session.get(Reel, reel_id)
+        reel.status, reel.error, reel.locked_at = ReelStatus.FAILED, error, None
+        reel.attempts = max(reel.attempts, MAX_ATTEMPTS)
+        session.commit()
+
+
 def _fail_or_retry(reel_id: str, error: str) -> None:
     with SessionLocal() as session:
         reel = session.get(Reel, reel_id)
@@ -213,8 +234,16 @@ def _fail_or_retry(reel_id: str, error: str) -> None:
 
 class Worker:
     def __init__(self, scraper: ApifyReelsScraper | None = None) -> None:
-        self.scraper = scraper or ApifyReelsScraper()
         self._stopping = False
+        self.config_error: str | None = None
+        try:
+            self.scraper = scraper or ApifyReelsScraper()
+        except ConfigError as exc:
+            # Не падаем: в общем контейнере падение воркера погасило бы и сайт (start.sh).
+            # Ролики получат понятную ошибку, а сайт останется доступен.
+            self.scraper = None
+            self.config_error = str(exc)
+            logger.error("%s — новые ролики будут помечаться ошибкой", exc)
 
     def stop(self, *_args) -> None:
         logger.info("Получен сигнал остановки, завершаю после текущей пачки")
@@ -231,7 +260,7 @@ class Worker:
                 requeue_stale()
                 last_stale_check = time.monotonic()
             try:
-                taken = process_batch(self.scraper)
+                taken = fail_batch(self.config_error) if self.config_error else process_batch(self.scraper)
             except Exception:
                 # Например, БД временно заблокирована: не падаем, пробуем снова
                 logger.exception("Сбой цикла воркера")
