@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-747de1d6-193f-4600-a803-de6629a84bc2/styles.css">
+<script src="_ds/nocturne-747de1d6-193f-4600-a803-de6629a84bc2/_ds_bundle.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+body{margin:0;background:var(--color-bg);}
+a{color:var(--color-accent-300);}
+a:hover{color:var(--color-accent-200);}
+@keyframes ra-spin{to{transform:rotate(360deg)}}
+@keyframes ra-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:radial-gradient(120% 60% at 0% 0%, color-mix(in srgb, var(--color-accent-900) 70%, transparent), transparent 60%), var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-variant-numeric:tabular-nums;">
+  <header style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-4) 32px;max-width:1400px;">
+    <div style="display:flex;align-items:baseline;gap:10px;margin-right:auto;">
+      <span style="width:8px;height:8px;border-radius:2px;background:var(--color-accent);box-shadow:0 0 12px var(--color-accent);align-self:center;"></span>
+      <span style="font-weight:500;font-size:16px;letter-spacing:-0.01em;">Skycoach</span>
+      <span style="font-size:14px;color:var(--color-neutral-500);">Reels Analyzer</span>
+    </div>
+    <span style="font-size:12px;color:var(--color-neutral-500);">Внутренний инструмент · до 20 ссылок за раз</span>
+  </header>
+
+  <main style="max-width:1400px;padding:8px 32px 64px;display:flex;flex-direction:column;gap:28px;">
+    <section style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;max-width:1180px;">
+      <div style="display:flex;flex-direction:column;gap:10px;flex:2 1 460px;min-width:0;">
+        <h1 style="font-size:26px;margin:0 0 4px;">Проверка роликов</h1>
+        <label for="ra-urls" style="font-size:13px;color:var(--color-neutral-400);">Ссылки на Instagram Reels, по одной на строку</label>
+        <textarea id="ra-urls" class="input" value="{{ text }}" onChange="{{ onText }}" placeholder="https://www.instagram.com/reel/DceO7gsR0w-/&#10;https://www.instagram.com/reel/…" style="min-height:132px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.6;padding:10px 12px;resize:vertical;border-color:{{ fieldBorder }};"></textarea>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <button class="btn btn-primary" disabled="{{ submitDisabled }}" onClick="{{ onSubmit }}" style="min-width:132px;height:36px;">
+            <sc-if value="{{ submitting }}" hint-placeholder-val="{{ false }}"><i class="ph ph-circle-notch" style="font-size:15px;animation:ra-spin .8s linear infinite;"></i><span>Отправляем…</span></sc-if>
+            <sc-if value="{{ notSubmitting }}" hint-placeholder-val="{{ true }}"><i class="ph ph-magnifying-glass" style="font-size:15px;"></i><span>Проверить</span></sc-if>
+          </button>
+          <span style="font-size:13px;color:{{ counterColor }};">{{ count }} / 20</span>
+          <sc-if value="{{ tooMany }}" hint-placeholder-val="{{ false }}">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:oklch(0.78 0.13 25);"><i class="ph ph-warning-circle"></i>Не больше 20 ссылок за раз</span>
+          </sc-if>
+          <sc-if value="{{ showHint }}" hint-placeholder-val="{{ true }}">
+            <span style="font-size:12px;color:var(--color-neutral-500);">Результаты появятся по мере готовности, обычно 1–3 минуты</span>
+          </sc-if>
+        </div>
+      </div>
+
+      <aside style="background:var(--color-surface);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex:1 1 340px;min-width:0;">
+        <button onClick="{{ toggleLegend }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;">
+          <i class="ph ph-info" style="color:var(--color-neutral-400);"></i>Как читать результат
+          <i class="{{ legendChevron }}" style="margin-left:auto;color:var(--color-neutral-500);"></i>
+        </button>
+        <sc-if value="{{ legendOpen }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;line-height:1.45;">
+            <div style="display:grid;grid-template-columns:128px 1fr;gap:10px;align-items:start;">
+              <span style="justify-self:start;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:12px;background:var(--color-neutral-800);color:var(--color-neutral-200);"><span style="width:6px;height:6px;border-radius:50%;background:var(--color-neutral-400);"></span>0 · Нет</span>
+              <span style="color:var(--color-neutral-300);">Skycoach не упоминается.</span>
+            </div>
+            <div style="display:grid;grid-template-columns:128px 1fr;gap:10px;align-items:start;">
+              <span style="justify-self:start;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:12px;background:oklch(0.33 0.06 90);color:oklch(0.9 0.11 92);"><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.85 0.14 92);"></span>1 · Упоминание</span>
+              <span style="color:var(--color-neutral-300);">Логотип или название есть, продукт не рекламируется.</span>
+            </div>
+            <div style="display:grid;grid-template-columns:128px 1fr;gap:10px;align-items:start;">
+              <span style="justify-self:start;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:12px;background:oklch(0.32 0.06 155);color:oklch(0.88 0.1 155);"><span style="width:6px;height:6px;border-radius:50%;background:oklch(0.78 0.14 155);"></span>2 · Реклама</span>
+              <span style="color:var(--color-neutral-300);">Призыв, описание услуги, промокод.</span>
+            </div>
+            <div style="display:grid;grid-template-columns:128px 1fr;gap:10px;align-items:center;padding-top:4px;">
+              <span style="display:flex;gap:3px;">
+                <span style="width:14px;height:6px;border-radius:2px;background:var(--color-accent);"></span><span style="width:14px;height:6px;border-radius:2px;background:var(--color-accent);"></span><span style="width:14px;height:6px;border-radius:2px;background:var(--color-accent);"></span><span style="width:14px;height:6px;border-radius:2px;background:var(--color-neutral-800);"></span><span style="width:14px;height:6px;border-radius:2px;background:var(--color-neutral-800);"></span>
+              </span>
+              <span style="color:var(--color-neutral-300);">Заметность: 1 — логотип мелькнул, 5 — очень агрессивная реклама.</span>
+            </div>
+          </div>
+        </sc-if>
+      </aside>
+    </section>
+
+    <sc-if value="{{ showBanner }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="display:flex;align-items:flex-start;gap:10px;max-width:1180px;padding:10px 14px;border-radius:var(--radius-md);background:oklch(0.27 0.05 25);box-shadow:0 0 0 1px oklch(0.42 0.09 25);font-size:13px;">
+        <i class="ph ph-wifi-slash" style="font-size:16px;color:oklch(0.8 0.12 25);margin-top:1px;"></i>
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+          <span style="font-weight:500;color:oklch(0.9 0.06 25);">Не удалось связаться с сервером</span>
+          <span style="color:var(--color-neutral-300);">Проверьте подключение — обновление статусов продолжится автоматически.</span>
+        </div>
+        <button class="btn btn-ghost" onClick="{{ hideBanner }}" style="color:var(--color-neutral-300);padding:2px 6px;" aria-label="Скрыть"><i class="ph ph-x"></i></button>
+      </div>
+    </sc-if>
+
+    <section style="display:flex;flex-direction:column;gap:14px;min-width:0;">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <h2 style="font-size:18px;margin:0;">Результаты</h2>
+        <span style="font-size:13px;color:var(--color-neutral-500);">{{ summary }}</span>
+        <sc-if value="{{ polling }}" hint-placeholder-val="{{ true }}">
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:oklch(0.8 0.09 250);"><i class="ph ph-arrows-clockwise" style="animation:ra-spin 2.4s linear infinite;"></i>Обновляется каждые 3 с</span>
+        </sc-if>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="seg" role="radiogroup" aria-label="Фильтр">
+            <sc-for list="{{ filters }}" as="f" hint-placeholder-count="5">
+              <label class="seg-opt" style="padding:5px 11px;font-size:12.5px;"><input type="radio" name="ra-filter" checked="{{ f.active }}" onChange="{{ f.pick }}"><span>{{ f.label }}</span><span style="color:var(--color-neutral-500);">{{ f.n }}</span></label>
+            </sc-for>
+          </div>
+          <button class="btn btn-secondary" onClick="{{ downloadCsv }}" disabled="{{ noRows }}" style="height:32px;font-size:13px;"><i class="ph ph-download-simple"></i>Скачать CSV</button>
+        </div>
+      </div>
+
+      <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:1180px;padding:40px 0 20px;display:flex;flex-direction:column;gap:22px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:24px;max-width:860px;">
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <span style="font-size:12px;color:var(--color-accent-300);">01</span>
+              <span style="font-size:15px;font-weight:500;">Вставьте ссылки</span>
+              <span style="font-size:13px;color:var(--color-neutral-400);">По одной на строку, до 20 за раз.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <span style="font-size:12px;color:var(--color-accent-300);">02</span>
+              <span style="font-size:15px;font-weight:500;">Нажмите «Проверить»</span>
+              <span style="font-size:13px;color:var(--color-neutral-400);">Страницу можно закрыть — задачи сохранятся.</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <span style="font-size:12px;color:var(--color-accent-300);">03</span>
+              <span style="font-size:15px;font-weight:500;">Смотрите результаты</span>
+              <span style="font-size:13px;color:var(--color-neutral-400);">Строки появятся здесь по мере готовности.</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--color-neutral-400);flex-wrap:wrap;">
+            Пример ссылки:
+            <code style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:3px 8px;border-radius:6px;background:var(--color-surface);color:var(--color-neutral-200);">https://www.instagram.com/reel/DceO7gsR0w-/</code>
+            <button class="btn btn-ghost" onClick="{{ fillExample }}" style="font-size:13px;">Вставить пример</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
+        <div style="overflow-x:auto;margin:0 -8px;padding:0 8px;">
+          <div role="table" style="min-width:1240px;font-size:13.5px;">
+            <div role="row" style="display:grid;grid-template-columns:{{ cols }};gap:16px;padding:8px 12px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500);background:linear-gradient(to right,transparent,var(--color-divider) 48px,var(--color-divider) calc(100% - 48px),transparent) no-repeat bottom / 100% 1px;">
+              <span>Ролик</span><span>Статус</span><span>Опубликован</span><span style="text-align:right;">Просмотры</span><span style="text-align:right;">Лайки</span><span style="text-align:right;">Коммент.</span><span>Интеграция</span><span>Заметность</span><span>Обоснование</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+              <div role="rowgroup" style="background:{{ r.rowBg }};background-repeat:no-repeat;background-size:100% 100%,100% 1px;background-position:0 0,bottom;">
+                <div role="row" tabindex="0" onClick="{{ r.toggle }}" onKeyDown="{{ r.key }}" aria-expanded="{{ r.expanded }}" style="display:grid;grid-template-columns:{{ cols }};gap:16px;padding:12px 12px;align-items:start;cursor:pointer;" style-hover="background:color-mix(in srgb, var(--color-text) 4%, transparent);">
+                  <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                    <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:{{ r.authorColor }};">{{ r.authorLabel }}</span>
+                    <sc-if value="{{ r.href }}" hint-placeholder-val="{{ true }}"><a href="{{ r.href }}" target="_blank" rel="noopener" onClick="{{ r.stop }}" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;text-decoration:none;">{{ r.shortUrl }}<i class="ph ph-arrow-up-right" style="font-size:11px;"></i></a></sc-if><sc-if value="{{ r.noReel }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-family:ui-monospace,Menlo,monospace;color:var(--color-neutral-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.shortUrl }}</span></sc-if>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px;min-width:0;align-items:flex-start;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                      <span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px 2px 7px;border-radius:6px;font-size:12px;white-space:nowrap;background:{{ r.badge.bg }};color:{{ r.badge.fg }};">
+                        <sc-if value="{{ r.badge.spin }}" hint-placeholder-val="{{ false }}"><i class="ph ph-circle-notch" style="font-size:13px;animation:ra-spin .9s linear infinite;"></i></sc-if>
+                        <sc-if value="{{ r.badge.pulse }}" hint-placeholder-val="{{ false }}"><span style="width:6px;height:6px;margin:0 2px;border-radius:50%;background:currentColor;animation:ra-pulse 1.4s ease-in-out infinite;"></span></sc-if>
+                        <sc-if value="{{ r.badge.icon }}" hint-placeholder-val="{{ false }}"><i class="{{ r.badge.icon }}" style="font-size:13px;"></i></sc-if>
+                        {{ r.badge.label }}
+                      </span>
+                      <sc-if value="{{ r.cached }}" hint-placeholder-val="{{ false }}">
+                        <span title="Ролик уже проверялся, показан сохранённый результат" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--color-neutral-400);padding:1px 6px;border-radius:5px;box-shadow:inset 0 0 0 1px var(--color-neutral-800);cursor:help;"><i class="ph ph-clock-counter-clockwise"></i>из кэша</span>
+                      </sc-if>
+                    </div>
+                    <sc-if value="{{ r.showErr }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11.5px;line-height:1.35;color:var(--color-neutral-400);">{{ r.error }}</span>
+                    </sc-if>
+                  </div>
+                  <span style="color:var(--color-neutral-300);white-space:nowrap;">{{ r.date }}</span>
+                  <span title="{{ r.views.title }}" style="text-align:right;color:{{ r.views.color }};cursor:{{ r.views.cursor }};">{{ r.views.text }}</span>
+                  <span title="{{ r.likes.title }}" style="text-align:right;color:{{ r.likes.color }};cursor:{{ r.likes.cursor }};">{{ r.likes.text }}</span>
+                  <span title="{{ r.comments.title }}" style="text-align:right;color:{{ r.comments.color }};cursor:{{ r.comments.cursor }};">{{ r.comments.text }}</span>
+                  <div>
+                    <sc-if value="{{ r.cls }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:12px;background:{{ r.cls.bg }};color:{{ r.cls.fg }};"><span style="width:6px;height:6px;border-radius:50%;background:{{ r.cls.dot }};"></span>{{ r.cls.label }}</span>
+                    </sc-if>
+                    <sc-if value="{{ r.noCls }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-600);">—</span></sc-if>
+                  </div>
+                  <div>
+                    <sc-if value="{{ r.hasVis }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:inline-flex;align-items:center;gap:8px;" aria-label="{{ r.visAria }}">
+                        <span style="display:flex;gap:3px;">
+                          <sc-for list="{{ r.segs }}" as="s" hint-placeholder-count="5"><span style="width:12px;height:6px;border-radius:2px;background:{{ s.bg }};"></span></sc-for>
+                        </span>
+                        <span style="color:var(--color-neutral-200);">{{ r.vis }}</span>
+                      </span>
+                    </sc-if>
+                    <sc-if value="{{ r.noVis }}" hint-placeholder-val="{{ true }}"><span style="color:var(--color-neutral-600);">—</span></sc-if>
+                  </div>
+                  <div style="display:flex;gap:8px;align-items:flex-start;min-width:0;">
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:{{ r.justColor }};">{{ r.justFirst }}</span>
+                    <sc-if value="{{ r.noAudio }}" hint-placeholder-val="{{ false }}"><i class="ph ph-speaker-slash" title="Без звука" style="color:oklch(0.8 0.12 55);font-size:14px;margin-top:2px;"></i></sc-if>
+                    <i class="{{ r.chevron }}" style="color:var(--color-neutral-500);margin-top:3px;font-size:12px;"></i>
+                  </div>
+                </div>
+                <sc-if value="{{ r.expanded }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;padding:4px 12px 20px;margin-left:calc(200px + 16px);max-width:1000px;">
+                    <sc-if value="{{ r.showErr }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:6px;grid-column:1 / -1;">
+                        <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500);">Ошибка</span>
+                        <span style="font-size:13.5px;line-height:1.5;color:{{ r.badge.fg }};">{{ r.error }}</span>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ r.just }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:6px;grid-column:1 / -1;">
+                        <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500);">Обоснование</span>
+                        <p style="margin:0;font-size:14px;line-height:1.55;color:var(--color-neutral-200);text-wrap:pretty;max-width:760px;">{{ r.just }}</p>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                      <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500);">Транскрипт</span>
+                      <sc-if value="{{ r.noAudio }}" hint-placeholder-val="{{ false }}">
+                        <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:12px;background:oklch(0.33 0.07 55);color:oklch(0.88 0.1 60);"><i class="ph ph-speaker-slash"></i>Без звука — анализ только по видео</span>
+                      </sc-if>
+                      <span style="font-size:13px;line-height:1.55;color:{{ r.transcriptColor }};text-wrap:pretty;">{{ r.transcriptText }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                      <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-500);">Подпись к ролику</span>
+                      <span style="font-size:13px;line-height:1.55;color:{{ r.captionColor }};text-wrap:pretty;white-space:pre-line;">{{ r.captionText }}</span>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{ filteredEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:28px 12px;font-size:13px;color:var(--color-neutral-500);">Нет строк с таким фильтром.</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Все состояния&quot;,&quot;Пустое состояние&quot;],&quot;default&quot;:&quot;Все состояния&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showError&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Состояния&quot;}}">
+const MOCK = [
+  { id:'j1', author:'valorant_funzone', url:'https://www.instagram.com/reel/DceO7gsR0w-/', status:'done', published:'2026-08-25T18:01:57+00:00', views:221738, likes:10954, comments:67, cls:2, vis:4, hasAudio:true,
+    just:'4/5. Логотип в кадре 9 с из 32 (28 %), до ≈12 % площади кадра. Голосовой призыв на 0:14. Промокод WOW20 в подписи.',
+    transcript:'…и если хотите апнуть ранг без нервов — ребята из Skycoach реально помогли, ссылка в описании, промокод WOW20.', caption:'They will cower! 🔥\nПромокод WOW20 — скидка на бустинг в Skycoach' },
+  { id:'j2', author:'dota_mid_or_feed', url:'https://www.instagram.com/reel/Cx81kQpLm2a/', status:'done', published:'2026-09-02T11:20:00+00:00', views:48210, likes:null, comments:212, cls:1, vis:2, hasAudio:true,
+    just:'2/5. Название Skycoach на футболке стримера, в кадре 4 с из 41. Призыва и промокода нет.', transcript:null, caption:'Когда тиммейт снова пикнул Пуджа' },
+  { id:'j3', author:'wow_classic_daily', url:'https://www.instagram.com/reel/DaQ7s0vT11b/', status:'done', published:'2026-09-14T08:45:10+00:00', views:15320, likes:902, comments:31, cls:0, vis:null, hasAudio:true,
+    just:'Skycoach не найден ни в кадре, ни в речи, ни в подписи.', transcript:'Сегодня разбираем новый рейд, всё по таймингам…', caption:'Гайд по первому боссу' },
+  { id:'j4', author:'cs_clutchmoments', url:'https://www.instagram.com/reel/DbK2yhR9uXw/', status:'analyzing', published:'2026-09-28T19:00:00+00:00', views:9021, likes:640, comments:18 },
+  { id:'j5', author:null, url:'https://www.instagram.com/reel/DdP0aa1Lq7Z/', status:'queued', cached:false },
+  { id:'j6', author:'lol_rankup', url:'https://www.instagram.com/reel/CzT5wNn4pQe/', status:'done', cached:true, published:'2026-07-30T15:12:00+00:00', views:1034502, likes:88410, comments:1204, cls:2, vis:5, hasAudio:true,
+    just:'5/5. Интеграция на весь ролик: логотип в углу 100 % времени, два голосовых призыва, промокод RANK15 в кадре и в подписи.', transcript:'Skycoach — лучший способ поднять ранг, жми на ссылку в шапке!', caption:'Реклама. Skycoach — промокод RANK15' },
+  { id:'j7', author:null, url:'https://www.instagram.com/reel/DcX00privat/', status:'unavailable', error:'Ролик недоступен: приватный аккаунт, удалён или не существует' },
+  { id:'j8', author:null, url:'hello', status:'invalid_url', error:'Это не ссылка на Instagram Reel. Пример: https://www.instagram.com/reel/ABC123/', noReel:true },
+  { id:'j9', author:'apex_squadup', url:'https://www.instagram.com/reel/Dd12FailX9q/', status:'failed', error:'Сервис получения данных недоступен, попробуйте позже (попыток: 3)' },
+  { id:'j10', author:'valorant_silentplays', url:'https://www.instagram.com/reel/DcM8nOsnd4r/', status:'done', published:'2026-09-20T21:30:00+00:00', views:67345, likes:4120, comments:88, cls:1, vis:1, hasAudio:false,
+    just:'1/5. Логотип Skycoach мелькнул на 0:03 на 0,8 с. Звуковой дорожки нет — анализ только по кадрам и подписи.', transcript:null, caption:'no comms needed' },
+];
+
+const C = {
+  neutral:{ bg:'var(--color-neutral-800)', fg:'var(--color-neutral-200)', dot:'var(--color-neutral-400)' },
+  blue:{ bg:'oklch(0.31 0.06 250)', fg:'oklch(0.86 0.08 250)' },
+  green:{ bg:'oklch(0.32 0.06 155)', fg:'oklch(0.88 0.1 155)', dot:'oklch(0.78 0.14 155)' },
+  yellow:{ bg:'oklch(0.33 0.06 90)', fg:'oklch(0.9 0.11 92)', dot:'oklch(0.85 0.14 92)' },
+  orange:{ bg:'oklch(0.33 0.07 55)', fg:'oklch(0.88 0.1 60)' },
+  red:{ bg:'oklch(0.31 0.08 25)', fg:'oklch(0.86 0.09 25)' },
+};
+const STATUS = {
+  queued:{ label:'В очереди', ...C.neutral, pulse:true },
+  fetching:{ label:'Получаем данные', ...C.blue, spin:true },
+  analyzing:{ label:'Анализируем видео', ...C.blue, spin:true },
+  done:{ label:'Готово', ...C.green, icon:'ph ph-check' },
+  unavailable:{ label:'Недоступен', ...C.orange, icon:'ph ph-eye-slash' },
+  invalid_url:{ label:'Неверная ссылка', ...C.red, icon:'ph ph-link-break' },
+  failed:{ label:'Ошибка', ...C.red, icon:'ph ph-warning-octagon' },
+};
+const CLS = [
+  { label:'Нет', ...C.neutral }, { label:'Упоминание', ...C.yellow }, { label:'Реклама', ...C.green },
+];
+const ACTIVE = ['queued','fetching','analyzing'];
+const NF = new Intl.NumberFormat('ru-RU');
+const DF = new Intl.DateTimeFormat('ru-RU', { day:'numeric', month:'short', year:'numeric' });
+const fmtDate = s => s ? DF.format(new Date(s)).replace(/\./g,'').replace(/\s?г$/,'') : '—';
+const RULE = 'linear-gradient(to right,transparent,color-mix(in srgb, var(--color-text) 8%, transparent) 48px,color-mix(in srgb, var(--color-text) 8%, transparent) calc(100% - 48px),transparent)';
+const DONE_SAMPLE = { published:'2026-09-29T12:00:00+00:00', views:30412, likes:2210, comments:54, cls:2, vis:3, hasAudio:true,
+  just:'3/5. Логотип в кадре 6 с из 24 (25 %). Промокод в подписи, голосового призыва нет.', transcript:'…заходите в Skycoach, ссылка ниже.', caption:'Промокод в описании' };
+
+class Component extends DCLogic {
+  state = { text:'', rows: this.props.view === 'Пустое состояние' ? [] : MOCK.map(r => ({...r})), expanded:{ j1:true }, filter:'all', legendOpen:true, submitting:false, bannerHidden:false };
+  timers = [];
+  componentDidUpdate(p) {
+    if (p.view !== this.props.view) this.setState({ rows: this.props.view === 'Пустое состояние' ? [] : MOCK.map(r => ({...r})) });
+    if (p.showError !== this.props.showError) this.setState({ bannerHidden:false });
+  }
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+  lines() { return this.state.text.split('\n').map(s => s.trim()).filter(Boolean); }
+  patch(id, obj) { this.setState(s => ({ rows: s.rows.map(r => r.id === id ? { ...r, ...obj } : r) })); }
+  submit = () => {
+    const urls = this.lines();
+    if (!urls.length || urls.length > 20 || this.state.submitting) return;
+    this.setState({ submitting:true });
+    this.timers.push(setTimeout(() => {
+      const fresh = urls.map((u, i) => {
+        const bad = !/instagram\.com\/(.+\/)?reel\//i.test(u);
+        return { id:'n' + Date.now() + i, url:u, author:null, status: bad ? 'invalid_url' : 'queued',
+          error: bad ? 'Это не ссылка на Instagram Reel. Пример: https://www.instagram.com/reel/ABC123/' : null, noReel:bad };
+      });
+      this.setState(s => ({ submitting:false, text:'', rows:[...fresh, ...s.rows] }));
+      fresh.filter(r => r.status === 'queued').forEach((r, i) => {
+        const t0 = 1500 + i * 900;
+        this.timers.push(setTimeout(() => this.patch(r.id, { status:'fetching' }), t0));
+        this.timers.push(setTimeout(() => this.patch(r.id, { status:'analyzing', author:'new_blogger_' + (i + 1), published:DONE_SAMPLE.published, views:DONE_SAMPLE.views, likes:DONE_SAMPLE.likes, comments:DONE_SAMPLE.comments }), t0 + 3000));
+        this.timers.push(setTimeout(() => this.patch(r.id, { ...DONE_SAMPLE, status:'done' }), t0 + 7000));
+      });
+    }, 900));
+  };
+  metric(v, row) {
+    const na = row.noReel || ACTIVE.includes(row.status) && v == null || ['unavailable','failed'].includes(row.status);
+    if (v == null) return { text:'—', color:'var(--color-neutral-600)', title: na ? '' : 'Скрыто автором или недоступно', cursor: na ? 'inherit' : 'help' };
+    return { text:NF.format(v), color:'var(--color-neutral-100)', title:'', cursor:'inherit' };
+  }
+  csv = () => {
+    const head = ['Автор','Ссылка','Статус','Из кэша','Дата публикации','Просмотры','Лайки','Комментарии','Интеграция','Заметность','Обоснование','Ошибка'];
+    const q = v => '"' + String(v ?? '').replace(/"/g,'""') + '"';
+    const body = this.state.rows.map(r => [r.author ? '@' + r.author : '', r.url, STATUS[r.status].label, r.cached ? 'да' : '', r.published ? fmtDate(r.published) : '', r.views, r.likes, r.comments, r.cls != null && r.status === 'done' ? CLS[r.cls].label : '', r.vis, r.just, r.error].map(q).join(';'));
+    const blob = new Blob(['\ufeff' + [head.map(q).join(';'), ...body].join('\n')], { type:'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'skycoach-reels.csv'; a.click();
+  };
+  renderVals() {
+    const { rows, expanded, filter, text, submitting, legendOpen } = this.state;
+    const n = this.lines().length, tooMany = n > 20;
+    const problem = r => ['unavailable','invalid_url','failed'].includes(r.status);
+    const F = [
+      { k:'all', label:'Все', t:() => true },
+      { k:'2', label:'Реклама', t:r => r.status === 'done' && r.cls === 2 },
+      { k:'1', label:'Упоминание', t:r => r.status === 'done' && r.cls === 1 },
+      { k:'0', label:'Нет', t:r => r.status === 'done' && r.cls === 0 },
+      { k:'p', label:'Проблемы', t:problem },
+    ];
+    const test = F.find(f => f.k === filter).t;
+    const shown = rows.filter(test);
+    const active = rows.filter(r => ACTIVE.includes(r.status)).length;
+    const done = rows.filter(r => r.status === 'done').length;
+    return {
+      text, onText: e => this.setState({ text:e.target.value }),
+      count:n, tooMany, showHint: !tooMany,
+      counterColor: tooMany ? 'oklch(0.78 0.13 25)' : 'var(--color-neutral-500)',
+      fieldBorder: tooMany ? 'oklch(0.6 0.14 25)' : 'var(--color-divider)',
+      submitDisabled: !n || tooMany || submitting, submitting, notSubmitting: !submitting, onSubmit:this.submit,
+      legendOpen, toggleLegend: () => this.setState({ legendOpen:!legendOpen }), legendChevron: legendOpen ? 'ph ph-caret-up' : 'ph ph-caret-down',
+      showBanner: !!this.props.showError && !this.state.bannerHidden, hideBanner: () => this.setState({ bannerHidden:true }),
+      summary: rows.length ? `${rows.length} ${rows.length % 10 === 1 && rows.length % 100 !== 11 ? 'ролик' : [2,3,4].includes(rows.length % 10) && ![12,13,14].includes(rows.length % 100) ? 'ролика' : 'роликов'} · готово ${done}` + (active ? ` · в работе ${active}` : '') : 'Пока пусто',
+      polling: active > 0,
+      filters: F.map(f => ({ label:f.label, n: f.k === 'all' ? '' : rows.filter(f.t).length, active: filter === f.k, pick: () => this.setState({ filter:f.k }) })),
+      downloadCsv:this.csv, noRows: !rows.length,
+      isEmpty: !rows.length, hasRows: rows.length > 0, filteredEmpty: rows.length > 0 && !shown.length,
+      fillExample: () => this.setState({ text:'https://www.instagram.com/reel/DceO7gsR0w-/\n' }),
+      cols: 'minmax(200px,1.3fr) 190px 104px 92px 80px 84px 124px 108px minmax(240px,2fr)',
+      rows: shown.map(r => {
+        const b = STATUS[r.status], isDone = r.status === 'done', ex = !!expanded[r.id];
+        const code = (r.url.match(/reel\/([^/?#]+)/) || [])[1];
+        const hasVis = isDone && r.vis != null;
+        const toggle = () => this.setState(s => ({ expanded:{ ...s.expanded, [r.id]: !s.expanded[r.id] } }));
+        return {
+          ...r, expanded:ex, toggle, key: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }, stop: e => e.stopPropagation(),
+          rowBg: (ex ? 'linear-gradient(color-mix(in srgb, var(--color-text) 3%, transparent),color-mix(in srgb, var(--color-text) 3%, transparent))' : 'linear-gradient(transparent,transparent)') + ',' + RULE,
+          authorLabel: r.author ? '@' + r.author : r.noReel ? 'Ссылка не распознана' : 'Автор пока неизвестен',
+          authorColor: r.author ? 'var(--color-neutral-100)' : 'var(--color-neutral-500)',
+          href: r.noReel ? undefined : r.url, shortUrl: code ? 'reel/' + code : r.url,
+          badge:b, cached: !!r.cached, showErr: !!r.error, error:r.error,
+          date: fmtDate(r.published),
+          views:this.metric(r.views, r), likes:this.metric(r.likes, r), comments:this.metric(r.comments, r),
+          cls: isDone && r.cls != null ? CLS[r.cls] : null, noCls: !(isDone && r.cls != null),
+          hasVis, noVis: !hasVis, vis:r.vis, visAria: 'Заметность ' + r.vis + ' из 5',
+          segs: [1,2,3,4,5].map(i => ({ bg: i <= (r.vis || 0) ? 'var(--color-accent)' : 'var(--color-neutral-800)' })),
+          just: r.just || null,
+          justFirst: r.just ? r.just.split('\n')[0] : r.error ? 'Анализ не выполнен' : ACTIVE.includes(r.status) ? 'Появится после анализа' : '—',
+          justColor: r.just ? 'var(--color-neutral-300)' : 'var(--color-neutral-600)',
+          noAudio: r.hasAudio === false,
+          transcriptText: r.transcript || (r.hasAudio === false ? '' : 'Нет транскрипта'),
+          transcriptColor: r.transcript ? 'var(--color-neutral-200)' : 'var(--color-neutral-600)',
+          captionText: r.caption || 'Нет подписи', captionColor: r.caption ? 'var(--color-neutral-200)' : 'var(--color-neutral-600)',
+          chevron: ex ? 'ph ph-caret-up' : 'ph ph-caret-down',
+        };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

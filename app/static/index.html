@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skycoach Reels Analyzer</title>
+<link rel="stylesheet" href="/static/nocturne.css">
+<link rel="stylesheet" href="/static/app.css">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span class="brand-name">Skycoach</span>
+      <span class="brand-sub">Reels Analyzer</span>
+    </div>
+    <span class="topbar-note">Внутренний инструмент · до 20 ссылок за раз</span>
+  </header>
+
+  <main class="main">
+    <section class="intake">
+      <div class="intake-form">
+        <h1>Проверка роликов</h1>
+        <label for="urls" class="muted-label">Ссылки на Instagram Reels, по одной на строку</label>
+        <textarea id="urls" class="input urls" placeholder="https://www.instagram.com/reel/DceO7gsR0w-/&#10;https://www.instagram.com/reel/…"></textarea>
+        <div class="intake-actions">
+          <button id="submit" class="btn btn-primary submit" disabled>
+            <i class="ph ph-magnifying-glass"></i><span>Проверить</span>
+          </button>
+          <span id="counter" class="counter">0 / 20</span>
+          <span id="too-many" class="too-many" hidden><i class="ph ph-warning-circle"></i>Не больше 20 ссылок за раз</span>
+          <span id="hint" class="hint">Результаты появятся по мере готовности, обычно 1–3 минуты</span>
+        </div>
+      </div>
+
+      <aside class="legend">
+        <button id="legend-toggle" class="legend-toggle" aria-expanded="true">
+          <i class="ph ph-info legend-icon"></i>Как читать результат
+          <i id="legend-chevron" class="ph ph-caret-up legend-chevron"></i>
+        </button>
+        <div id="legend-body" class="legend-body">
+          <div class="legend-row">
+            <span class="pill pill-neutral"><span class="dot"></span>0 · Нет</span>
+            <span>Skycoach не упоминается.</span>
+          </div>
+          <div class="legend-row">
+            <span class="pill pill-yellow"><span class="dot"></span>1 · Упоминание</span>
+            <span>Логотип или название есть, продукт не рекламируется.</span>
+          </div>
+          <div class="legend-row">
+            <span class="pill pill-green"><span class="dot"></span>2 · Реклама</span>
+            <span>Призыв, описание услуги, промокод.</span>
+          </div>
+          <div class="legend-row legend-row-center">
+            <span class="segs segs-lg"><span class="on"></span><span class="on"></span><span class="on"></span><span></span><span></span></span>
+            <span>Заметность: 1 — логотип мелькнул, 5 — очень агрессивная реклама.</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <div id="banner" class="banner" role="alert" hidden>
+      <i id="banner-icon" class="ph ph-wifi-slash banner-icon"></i>
+      <div class="banner-text">
+        <span id="banner-title" class="banner-title"></span>
+        <span id="banner-body" class="banner-body"></span>
+      </div>
+      <button id="banner-close" class="btn btn-ghost banner-close" aria-label="Скрыть"><i class="ph ph-x"></i></button>
+    </div>
+
+    <section class="results">
+      <div class="results-head">
+        <h2>Результаты</h2>
+        <span id="summary" class="summary">Пока пусто</span>
+        <span id="polling" class="polling" hidden><i class="ph ph-arrows-clockwise"></i>Обновляется каждые 3 с</span>
+        <div class="results-tools">
+          <div id="filters" class="seg" role="radiogroup" aria-label="Фильтр"></div>
+          <button id="csv" class="btn btn-secondary tool-btn" disabled><i class="ph ph-download-simple"></i>Скачать CSV</button>
+          <button id="clear" class="btn btn-ghost tool-btn" disabled title="Убрать строки из этой таблицы. Результаты на сервере сохранятся."><i class="ph ph-trash"></i>Очистить</button>
+        </div>
+      </div>
+
+      <div id="empty" class="empty">
+        <div class="steps">
+          <div class="step"><span class="step-n">01</span><span class="step-title">Вставьте ссылки</span><span class="step-text">По одной на строку, до 20 за раз.</span></div>
+          <div class="step"><span class="step-n">02</span><span class="step-title">Нажмите «Проверить»</span><span class="step-text">Страницу можно закрыть — задачи сохранятся.</span></div>
+          <div class="step"><span class="step-n">03</span><span class="step-title">Смотрите результаты</span><span class="step-text">Строки появятся здесь по мере готовности.</span></div>
+        </div>
+        <div class="example">
+          Пример ссылки:
+          <code>https://www.instagram.com/reel/DceO7gsR0w-/</code>
+          <button id="fill-example" class="btn btn-ghost">Вставить пример</button>
+        </div>
+      </div>
+
+      <div id="table-wrap" class="table-wrap" hidden>
+        <div class="rtable" role="table">
+          <div class="rrow rhead" role="row">
+            <span>Ролик</span><span>Статус</span><span>Опубликован</span><span class="num">Просмотры</span><span class="num">Лайки</span><span class="num">Коммент.</span><span>Интеграция</span><span>Заметность</span><span>Обоснование</span>
+          </div>
+          <div id="rows"></div>
+          <div id="filtered-empty" class="filtered-empty" hidden>Нет строк с таким фильтром.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
