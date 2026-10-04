@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     max_transcribe_seconds: int = 900  # речь дальше 15 минут не транскрибируем
     max_video_mb: int = 300
 
+    # Защита публичного URL от расходов на Apify/AI
+    rate_limit_requests: int = 20  # POST /api/jobs с одного IP ...
+    rate_limit_window_secs: int = 600  # ... за это окно
+    max_new_reels_per_day: int = 300  # новых роликов в сутки на весь сервис
+
 
 @lru_cache
 def get_settings() -> Settings:

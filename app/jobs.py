@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session, selectinload
 
@@ -24,6 +24,19 @@ def normalize_urls(urls: list[str]) -> list[str]:
             seen.add(url)
             result.append(url)
     return result
+
+
+def count_new_reels(session: Session, urls: list[str]) -> int:
+    """Сколько роликов из запроса ещё нет в БД (только они стоят денег)."""
+    codes = {c for c in map(extract_shortcode, urls) if c}
+    if not codes:
+        return 0
+    existing = session.scalars(select(Reel.shortcode).where(Reel.shortcode.in_(codes))).all()
+    return len(codes - set(existing))
+
+
+def reels_created_since(session: Session, since: datetime) -> int:
+    return session.scalar(select(func.count()).select_from(Reel).where(Reel.created_at >= since))
 
 
 def create_jobs(session: Session, urls: list[str]) -> list[Job]:

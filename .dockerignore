@@ -1,0 +1,9 @@
+.git
+.env
+data/
+tests/
+docs/
+Reels Analyzer UI mockup
+*.pdf
+__pycache__/
+.claude/

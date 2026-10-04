@@ -1,13 +1,15 @@
+# Локальный запуск: web и воркер — отдельные сервисы из одного образа с общим volume для SQLite.
+# (На Railway оба процесса запускаются в одном контейнере через start.sh — см. Dockerfile.)
 services:
   web:
     build: .
     env_file: .env
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "8000:8000"
     volumes:
       - db-data:/data
 
-  # Тот же образ и тот же volume: файл SQLite общий для web и воркера
   worker:
     build: .
     env_file: .env
